@@ -1,6 +1,6 @@
 # app_roleta opção colar adicionada beta1.py
 import streamlit as st
-import pandas as pd
+import matplotlib.pyplot as plt
 
 
 # A CONFIGURAÇÃO DA PÁGINA DEVE SER A PRIMEIRA COISA NO CÓDIGO
@@ -147,9 +147,24 @@ with col_zero:
         import pandas as pd
 
 if st.session_state.analista.historico:
+  # 🔹 Gráfico bonito da frequência dos números
+if st.session_state.analista.historico:
     freq = pd.Series(st.session_state.analista.historico).value_counts().sort_index()
-    st.subheader("📊 Frequência dos Últimos Números")
-    st.bar_chart(freq)
+    fig = px.bar(
+        x=freq.index,
+        y=freq.values,
+        text=freq.values,
+        labels={'x':'Número', 'y':'Frequência'},
+        title="📊 Frequência dos Últimos Números"
+    )
+    fig.update_traces(
+        marker_color='orange', 
+        marker_line_color='black', 
+        marker_line_width=1.5, 
+        textposition='outside'
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
 
 st.subheader("Ou cole os últimos números:")
 
@@ -215,6 +230,7 @@ with col2:
 if st.button("Limpar Histórico"):
     st.session_state.analista.historico = []
     st.rerun()
+
 
 
 
