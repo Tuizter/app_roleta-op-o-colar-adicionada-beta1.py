@@ -1,5 +1,7 @@
 # app_roleta opção colar adicionada beta1.py
 import streamlit as st
+import pandas as pd
+
 
 # A CONFIGURAÇÃO DA PÁGINA DEVE SER A PRIMEIRA COISA NO CÓDIGO
 st.set_page_config(layout="wide", page_title="Roleta Mestre")
@@ -213,5 +215,6 @@ with col2:
 if st.button("Limpar Histórico"):
     st.session_state.analista.historico = []
     st.rerun()
+
 
 
