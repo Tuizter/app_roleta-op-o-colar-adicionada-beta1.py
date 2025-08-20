@@ -1,14 +1,13 @@
-# app_roleta opção colar adicionada beta1.py
+# app_roleta.py
 import streamlit as st
-import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.express as px
 
-
-# A CONFIGURAÇÃO DA PÁGINA DEVE SER A PRIMEIRA COISA NO CÓDIGO
+# Configuração da página
 st.set_page_config(layout="wide", page_title="Roleta Mestre")
 
-# --- A CLASSE 'AnalistaRoleta' COMPLETA FICA AQUI ---
+# --- Classe Analista ---
 class AnalistaRoleta:
-    # (A classe AnalistaRoleta não muda, é a mesma de antes)
     def __init__(self):
         self.historico = []
         self.CILINDRO_EUROPEU = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
@@ -46,7 +45,7 @@ class AnalistaRoleta:
 
     def _get_terminais_recentes(self, quantidade):
         return [n % 10 for n in self.historico[-quantidade:]]
-    
+
     def _checar_cavalos_diretos(self):
         if len(self.historico) < 2: return None
         t1, t2 = self._get_terminais_recentes(2)
@@ -96,7 +95,7 @@ class AnalistaRoleta:
     def analisar(self):
         if len(self.historico) < 3:
             return {"analise": "Aguardando mais números...", "estrategia": "Nenhuma ação recomendada."}
-        
+
         analises_prioritarias = [
             self._checar_cavalos_diretos,
             self._checar_continuacao_cavalos,
@@ -106,19 +105,15 @@ class AnalistaRoleta:
             resultado = funcao_analise()
             if resultado:
                 return resultado
-        
+
         return {"analise": "Nenhum padrão tático claro identificado.", "estrategia": "Aguardar um gatilho."}
 
-# --- FUNÇÃO DE LOGIN COM SENHA ---
+# --- Função de login ---
 def check_password():
-    """Retorna True se o usuário tiver digitado a senha correta."""
     if st.session_state.get("password_correct", False):
         return True
-
-    password_input = st.text_input("Digite a senha para acessar:", type="password")
-    
-    CORRECT_PASSWORD = "Noah2022****" 
-    
+    password_input = st.text_input("Digite a senha:", type="password")
+    CORRECT_PASSWORD = "Noah2022****"
     if st.button("Entrar"):
         if password_input == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
@@ -127,8 +122,7 @@ def check_password():
             st.error("Senha incorreta.")
     return False
 
-# --- INTERFACE PRINCIPAL DO APLICATIVO ---
-
+# --- Interface principal ---
 if not check_password():
     st.stop()
 
@@ -139,84 +133,34 @@ if 'analista' not in st.session_state:
 
 st.header("Clique no número para adicionar ao histórico:")
 
+# Botão 0
 col_zero, col_table = st.columns([1, 12])
 with col_zero:
     if st.button("0", key="num_0", use_container_width=True):
         st.session_state.analista.adicionar_numero(0)
         st.rerun()
-        import pandas as pd
 
-if st.session_state.analista.historico:
-  # 🔹 Gráfico bonito da frequência dos números
-if st.session_state.analista.historico:
-    freq = pd.Series(st.session_state.analista.historico).value_counts().sort_index()
-    fig = px.bar(
-        x=freq.index,
-        y=freq.values,
-        text=freq.values,
-        labels={'x':'Número', 'y':'Frequência'},
-        title="📊 Frequência dos Últimos Números"
-    )
-    fig.update_traces(
-        marker_color='orange', 
-        marker_line_color='black', 
-        marker_line_width=1.5, 
-        textposition='outside'
-    )
-    st.plotly_chart(fig, use_container_width=True)
+# Números 1 a 36
+numeros = [[3,6,9,12,15,18,21,24,27,30,33,36],
+           [2,5,8,11,14,17,20,23,26,29,32,35],
+           [1,4,7,10,13,16,19,22,25,28,31,34]]
 
-
-st.subheader("Ou cole os últimos números:")
-
-entrada = st.text_input(
-    "Cole aqui separados por vírgula ou espaço",
-    placeholder="Ex: 5, 17, 32, 10"
-)
-
-if st.button("Adicionar Sequência"):
-    if entrada:
-        # Divide a string em vírgulas ou espaços
-        valores = entrada.replace(",", " ").split()
-        numeros_validos = []
-
-        for v in valores:
-            try:
-                num = int(v)
-                if 0 <= num <= 36:
-                    numeros_validos.append(num)
-            except:
-                pass  # ignora valores inválidos
-
-        # adiciona todos os números válidos ao histórico
-        for n in numeros_validos:
-            st.session_state.analista.adicionar_numero(n)
-
-        if numeros_validos:
-            st.success(f"Números adicionados: {', '.join(map(str, numeros_validos))}")
+cols = st.columns(12)
+for i in range(12):
+    for j in range(3):
+        num = numeros[j][i]
+        if cols[i].button(f"{num}", key=f"num_{num}", use_container_width=True):
+            st.session_state.analista.adicionar_numero(num)
             st.rerun()
-        else:
-            st.warning("Nenhum número válido foi encontrado.")
-
-
-with col_table:
-    numeros = [[3,6,9,12,15,18,21,24,27,30,33,36],
-               [2,5,8,11,14,17,20,23,26,29,32,35],
-               [1,4,7,10,13,16,19,22,25,28,31,34]]
-    
-    cols = st.columns(12)
-    for i in range(12):
-        for j in range(3):
-            num = numeros[j][i]
-            if cols[i].button(f"{num}", key=f"num_{num}", use_container_width=True):
-                st.session_state.analista.adicionar_numero(num)
-                st.rerun()
 
 st.divider()
 st.header("Análise em Tempo Real")
 
+# Exibir histórico
 historico_str = ", ".join(map(str, st.session_state.analista.historico))
-st.write(f"**Tempo de Tela:** `{historico_str or 'Vazio'}`")
+st.write(f"**Tempo de Tela:** {historico_str or 'Vazio'}")
 
+# Resultado da análise
 resultado_analise = st.session_state.analista.analisar()
 
 col1, col2 = st.columns(2)
@@ -227,10 +171,28 @@ with col2:
     st.subheader("Estratégia Recomendada:")
     st.success(resultado_analise['estrategia'])
 
+# Botão para limpar histórico
 if st.button("Limpar Histórico"):
     st.session_state.analista.historico = []
     st.rerun()
 
+# --- Gráfico de frequência ---
+if st.session_state.analista.historico:
+    freq = pd.Series(st.session_state.analista.historico).value_counts().sort_index()
+    max_freq = freq.max()
+    cores = ['red' if v == max_freq else 'orange' for v in freq.values]
 
-
-
+    fig = px.bar(
+        x=freq.index,
+        y=freq.values,
+        text=freq.values,
+        labels={'x':'Número', 'y':'Frequência'},
+        title="📊 Frequência dos Últimos Números"
+    )
+    fig.update_traces(
+        marker_color=cores,
+        marker_line_color='black',
+        marker_line_width=1.5,
+        textposition='outside'
+    )
+    st.plotly_chart(fig, use_container_width=True)
