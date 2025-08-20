@@ -1,0 +1,1 @@
+# app_roleta-op-o-colar-adicionada-beta1.py
