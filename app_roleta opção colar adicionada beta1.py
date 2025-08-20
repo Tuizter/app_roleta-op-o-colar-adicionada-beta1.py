@@ -47,8 +47,7 @@ class AnalistaRoleta:
 
     def adicionar_numeros_lista(self, lista_numeros):
         # Substitui espaços por vírgula e adiciona apenas inteiros válidos
-        entrada_formatada = lista_numeros.replace(" ", ",")
-        numeros = [int(n.strip()) for n in entrada_formatada.split(",") if n.strip().isdigit()]
+        numeros = [int(n.strip()) for n in lista_numeros.replace(" ", ",").split(",") if n.strip().isdigit()]
         for n in numeros:
             self.adicionar_numero(n)
 
@@ -68,7 +67,7 @@ class AnalistaRoleta:
         return None
 
     def _checar_continuacao_cavalos(self):
-        if len(self.historico) < 3: return None
+        if len(self.historico) < 2: return None
         terminais_unicos = set(self._get_terminais_recentes(3))
         if len(terminais_unicos) < 2: return None
         for cabeca, laterais in self.CAVALOS_TRIPLOS.items():
