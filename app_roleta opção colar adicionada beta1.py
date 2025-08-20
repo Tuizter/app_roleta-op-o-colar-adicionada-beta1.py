@@ -1,6 +1,6 @@
 # app_roleta.py
 import streamlit as st
-import pandas as pd
+
 import plotly.express as px
 
 # Configuração da página
@@ -196,3 +196,4 @@ if st.session_state.analista.historico:
         textposition='outside'
     )
     st.plotly_chart(fig, use_container_width=True)
+
