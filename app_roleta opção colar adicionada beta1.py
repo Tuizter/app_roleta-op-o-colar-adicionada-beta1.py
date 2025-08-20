@@ -47,7 +47,8 @@ class AnalistaRoleta:
 
     def adicionar_numeros_lista(self, lista_numeros):
         # Substitui espaços por vírgula e adiciona apenas inteiros válidos
-        numeros = [int(n.strip()) for n in lista_numeros.replace(" ", ",").split(",") if n.strip().isdigit()]
+        entrada_formatada = lista_numeros.replace(" ", ",")
+        numeros = [int(n.strip()) for n in entrada_formatada.split(",") if n.strip().isdigit()]
         for n in numeros:
             self.adicionar_numero(n)
 
@@ -67,7 +68,7 @@ class AnalistaRoleta:
         return None
 
     def _checar_continuacao_cavalos(self):
-        if len(self.historico) < 2: return None
+        if len(self.historico) < 3: return None
         terminais_unicos = set(self._get_terminais_recentes(3))
         if len(terminais_unicos) < 2: return None
         for cabeca, laterais in self.CAVALOS_TRIPLOS.items():
@@ -125,7 +126,7 @@ def check_password():
     if st.button("Entrar"):
         if password_input == CORRECT_PASSWORD:
             st.session_state["password_correct"] = True
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Senha incorreta.")
     return False
@@ -156,7 +157,7 @@ col_zero, col_table = st.columns([1, 12])
 with col_zero:
     if st.button("0", key="num_0", use_container_width=True):
         st.session_state.analista.adicionar_numero(0)
-        st.rerun()
+        st.experimental_rerun()
 
 # Números 1 a 36
 numeros = [[3,6,9,12,15,18,21,24,27,30,33,36],
@@ -168,7 +169,7 @@ for i in range(12):
         num = numeros[j][i]
         if cols[i].button(f"{num}", key=f"num_{num}", use_container_width=True):
             st.session_state.analista.adicionar_numero(num)
-            st.rerun()
+            st.experimental_rerun()
 
 st.divider()
 st.header("Análise em Tempo Real")
@@ -190,7 +191,7 @@ with col2:
 # Botão para limpar histórico
 if st.button("Limpar Histórico"):
     st.session_state.analista.historico = []
-    st.rerun()
+    st.experimental_rerun()
 
 # --- Gráfico de frequência ---
 if st.session_state.analista.historico:
