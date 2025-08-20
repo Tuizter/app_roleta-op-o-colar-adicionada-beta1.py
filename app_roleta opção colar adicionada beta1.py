@@ -1,6 +1,6 @@
 # app_roleta.py
 import streamlit as st
-
+import pandas as pd
 import plotly.express as px
 
 # Configuração da página
@@ -153,6 +153,19 @@ for i in range(12):
             st.session_state.analista.adicionar_numero(num)
             st.rerun()
 
+# Entrada via colar lista
+st.divider()
+st.header("Ou cole os números separados por vírgula:")
+numeros_texto = st.text_area("Ex: 3,12,25,0,7")
+if st.button("Adicionar da lista"):
+    try:
+        lista = [int(n.strip()) for n in numeros_texto.split(",") if n.strip().isdigit()]
+        for n in lista:
+            st.session_state.analista.adicionar_numero(n)
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao adicionar números: {e}")
+
 st.divider()
 st.header("Análise em Tempo Real")
 
@@ -196,4 +209,3 @@ if st.session_state.analista.historico:
         textposition='outside'
     )
     st.plotly_chart(fig, use_container_width=True)
-
