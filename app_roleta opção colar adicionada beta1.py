@@ -1,6 +1,7 @@
-# app_roleta_v3_corrigido.py
+# app_roleta_v4.py
 import streamlit as st
-import pandas as pd  # <-- ESTA LINHA FOI ADICIONADA PARA CORRIGIR O ERRO
+import pandas as pd
+import math
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Roleta Mestre")
@@ -18,11 +19,10 @@ LAYOUT_MESA = [
 ]
 CILINDRO_EUROPEU = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 
-# --- CLASSE ANALISTAROLETA ATUALIZADA ---
+# --- CLASSE ANALISTAROLETA (SEM MUDANÇAS NA LÓGICA INTERNA) ---
 class AnalistaRoleta:
     def __init__(self):
         self.historico = []
-        self.log_gatilhos = []
         self.rodada = 0
         self.CILINDRO_EUROPEU = CILINDRO_EUROPEU
         self.VIZINHOS = self._calcular_vizinhos()
@@ -63,19 +63,13 @@ class AnalistaRoleta:
             self.rodada += 1
             self.historico.append(numero)
             if len(self.historico) > 20: self.historico.pop(0)
-            
-            resultado_analise = self.executar_analise_completa()
-            if "Gatilho" in resultado_analise['analise'] or "Manipulação" in resultado_analise['analise']:
-                log_msg = f"Rodada {self.rodada}: {resultado_analise['analise']}"
-                if not self.log_gatilhos or self.log_gatilhos[-1] != log_msg:
-                     self.log_gatilhos.append(log_msg)
 
     def remover_ultimo(self):
         if self.historico: return self.historico.pop()
         return None
 
     def limpar_tudo(self):
-        self.historico, self.log_gatilhos, self.rodada = [], [], 0
+        self.historico, self.rodada = [], 0
     
     def get_estatisticas(self):
         if not self.historico: return {'vermelho': 0, 'preto': 0, 'zero': 0, 'par': 0, 'impar': 0, 'terminais': {i: 0 for i in range(10)}}
@@ -99,7 +93,6 @@ class AnalistaRoleta:
             if set(laterais) == {t1, t2}:
                 numeros_base = {n for n in range(37) if n % 10 == cabeca}
                 return {
-                    "analise": f"Gatilho 'Cavalos Diretos' Ativado: T{t1} e T{t2} puxam T{cabeca}.",
                     "estrategia": f"Apostar no Terminal {cabeca} e seus vizinhos no cilindro.",
                     "numeros_alvo": self._expandir_com_vizinhos(numeros_base)
                 }
@@ -115,7 +108,6 @@ class AnalistaRoleta:
                 faltante = list(trindade - terminais_unicos)[0]
                 numeros_base = {n for n in range(37) if n % 10 == faltante}
                 return {
-                    "analise": f"Gatilho 'Continuação de Cavalos': Grupo {{{', '.join(map(str, sorted(list(trindade))))}}} incompleto.",
                     "estrategia": f"Apostar no Terminal faltante {faltante} e seus vizinhos.",
                     "numeros_alvo": self._expandir_com_vizinhos(numeros_base)
                 }
@@ -130,28 +122,23 @@ class AnalistaRoleta:
             if contagem >= 5:
                 numeros_base = self.DISFARCADOS[dom]
                 return {
-                    "analise": f"Manipulação de T{dom} (SATURADO - {contagem}x).",
-                    "estrategia": f"Antecipar quebra apostando nos Disfarçados e seus vizinhos.",
+                    "estrategia": f"Antecipar quebra de T{dom} ({contagem}x). Apostar nos Disfarçados e vizinhos.",
                     "numeros_alvo": self._expandir_com_vizinhos(numeros_base)
                 }
             else:
                 alvo_terminais = {dom} | set(self.CAVALOS_TRIPLOS[dom])
                 numeros_base = {n for n in range(37) if n % 10 in alvo_terminais}
                 return {
-                    "analise": f"Manipulação de T{dom} forte ({contagem}x).",
-                    "estrategia": f"Seguir tendência. Apostar no Cavalo Triplo {{{', '.join(map(str, sorted(list(alvo_terminais))))}}} e vizinhos.",
+                    "estrategia": f"Seguir tendência de T{dom} ({contagem}x). Apostar no Cavalo Triplo e vizinhos.",
                     "numeros_alvo": self._expandir_com_vizinhos(numeros_base)
                 }
         return None
 
     def executar_analise_completa(self):
-        if len(self.historico) < 3: return {"analise": "Aguardando mais números...", "estrategia": "Nenhuma ação recomendada.", "numeros_alvo": set()}
-        
         for funcao_analise in [self._checar_cavalos_diretos, self._checar_continuacao_cavalos, self._checar_manipulacao_terminal]:
             resultado = funcao_analise()
             if resultado: return resultado
-        
-        return {"analise": "Nenhum padrão tático claro identificado.", "estrategia": "Aguardar um gatilho.", "numeros_alvo": set()}
+        return {"estrategia": "Aguardar um gatilho.", "numeros_alvo": set()}
 
 # --- FUNÇÕES DA INTERFACE (UI) ---
 def check_password():
@@ -165,25 +152,50 @@ def check_password():
         else: st.error("Senha incorreta.")
     return False
 
-def get_style(num, numeros_a_destacar):
+def get_style_caixa(num, numeros_a_destacar):
     cor_fundo = "#D22F27" if num in CORES_NUMEROS['vermelho'] else "#231F20" if num in CORES_NUMEROS['preto'] else "#006A4E"
     borda = "4px solid #FFD700" if num in numeros_a_destacar else "2px solid grey"
     return f'background-color: {cor_fundo}; color: white; border: {borda};'
 
 def gerar_tabela_visual(numeros_a_destacar):
     style_base = 'width: 60px; height: 40px; text-align: center; font-weight: bold; font-size: 16px;'
-    html = "<div style='display: flex; align-items: flex-start;'>"
-    html += f"<div><table style='border-collapse: collapse;'><tr><td style='{get_style(0, numeros_a_destacar)}{style_base} height: 128px;'>0</td></tr></table></div>"
+    html = "<div style='display: flex; align-items: flex-start; margin-top: 20px;'>"
+    html += f"<div><table style='border-collapse: collapse;'><tr><td style='{get_style_caixa(0, numeros_a_destacar)}{style_base} height: 128px;'>0</td></tr></table></div>"
     html += "<div><table style='border-collapse: collapse;'>"
     for linha in LAYOUT_MESA:
-        html += "<tr>" + "".join(f"<td style='{get_style(num, numeros_a_destacar)}{style_base}'>{num}</td>" for num in linha) + "</tr>"
+        html += "<tr>" + "".join(f"<td style='{get_style_caixa(num, numeros_a_destacar)}{style_base}'>{num}</td>" for num in linha) + "</tr>"
     html += "</table></div></div>"
     return html
 
-def gerar_cilindro_visual(numeros_a_destacar):
-    style_base = 'width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin: 2px; border-radius: 5px;'
-    html = "<div style='display: flex; flex-wrap: wrap; justify-content: center; max-width: 800px; margin: auto;'>"
-    html += "".join(f"<div style='{get_style(num, numeros_a_destacar)}{style_base}'>{num}</div>" for num in CILINDRO_EUROPEU)
+def gerar_cilindro_realista(numeros_a_destacar):
+    # Parâmetros do layout oval
+    total_numeros = len(CILINDRO_EUROPEU)
+    largura_elipse = 450  # largura do oval em pixels
+    altura_elipse = 150  # altura do oval em pixels
+    tamanho_caixa = 35
+
+    html = f"<div style='position: relative; width: {largura_elipse*2.1}px; height: {altura_elipse*2.2}px; margin: auto;'>"
+    
+    # Divide os números em duas metades para as partes superior e inferior do oval
+    metade_superior = CILINDRO_EUROPEU[0:19]
+    metade_inferior = CILINDRO_EUROPEU[19:][::-1] # Inverte para desenhar corretamente
+
+    for i, num in enumerate(metade_superior):
+        # Calcula o ângulo e a posição para a parte superior
+        angulo = (i / (len(metade_superior) - 1)) * math.pi
+        x = largura_elipse - largura_elipse * math.cos(angulo)
+        y = altura_elipse - altura_elipse * math.sin(angulo)
+        style_caixa = get_style_caixa(num, numeros_a_destacar)
+        html += f"<div style='{style_caixa} position: absolute; left: {x}px; top: {y}px; width: {tamanho_caixa}px; height: {tamanho_caixa}px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 5px;'>{num}</div>"
+
+    for i, num in enumerate(metade_inferior):
+        # Calcula o ângulo e a posição para a parte inferior
+        angulo = math.pi + (i / (len(metade_inferior) - 1)) * math.pi
+        x = largura_elipse - largura_elipse * math.cos(angulo)
+        y = altura_elipse - altura_elipse * math.sin(angulo)
+        style_caixa = get_style_caixa(num, numeros_a_destacar)
+        html += f"<div style='{style_caixa} position: absolute; left: {x}px; top: {y}px; width: {tamanho_caixa}px; height: {tamanho_caixa}px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 5px;'>{num}</div>"
+
     html += "</div>"
     return html
 
@@ -203,30 +215,22 @@ with st.sidebar:
     if st.button("Limpar Histórico", type="primary", use_container_width=True):
         st.session_state.analista.limpar_tudo()
         st.rerun()
-    
-    st.divider()
-    st.header("Log de Gatilhos")
-    if not st.session_state.analista.log_gatilhos: st.write("Nenhum gatilho ativado.")
-    else: st.text_area("Histórico:", value="\n".join(st.session_state.analista.log_gatilhos[::-1]), height=300, disabled=True)
 
 # --- ÁREA DE ENTRADA DE NÚMEROS ---
 st.header("Entrada de Números")
 tab_botoes, tab_colar = st.tabs(["🖱️ Clicar", "📋 Colar"])
-
 with tab_botoes:
     col_zero, col_table = st.columns([1, 12])
     with col_zero:
         if st.button("0", key="num_0", use_container_width=True):
-            st.session_state.analista.adicionar_numero(0)
-            st.rerun()
+            st.session_state.analista.adicionar_numero(0); st.rerun()
     with col_table:
         cols = st.columns(12)
         for i in range(12):
             for j in range(3):
                 num = LAYOUT_MESA[j][i]
                 if cols[i].button(f"{num}", key=f"num_{num}", use_container_width=True):
-                    st.session_state.analista.adicionar_numero(num)
-                    st.rerun()
+                    st.session_state.analista.adicionar_numero(num); st.rerun()
 
 with tab_colar:
     entrada_texto = st.text_input("Cole aqui:", placeholder="Ex: 5, 17, 32, 10")
@@ -234,37 +238,29 @@ with tab_colar:
         if entrada_texto:
             numeros_validos = [int(v) for v in entrada_texto.replace(",", " ").split() if v.strip().isdigit() and 0 <= int(v.strip()) <= 36]
             for n in numeros_validos: st.session_state.analista.adicionar_numero(n)
-            if numeros_validos:
-                st.success(f"Números adicionados: {', '.join(map(str, numeros_validos))}")
-                st.rerun()
+            if numeros_validos: st.success(f"Números adicionados: {', '.join(map(str, numeros_validos))}"); st.rerun()
             else: st.warning("Nenhum número válido encontrado.")
 
 # --- ÁREA DE ANÁLISE ---
 st.divider()
 st.header("Análise em Tempo Real")
-
 historico_str = ", ".join(map(str, st.session_state.analista.historico))
 st.info(f"**Últimos Números:** {historico_str or 'Nenhum número no histórico'}")
-
 resultado_analise = st.session_state.analista.executar_analise_completa()
-
-col_diag, col_est = st.columns(2)
-with col_diag: st.subheader("Diagnóstico:"); st.info(resultado_analise['analise'])
-with col_est: st.subheader("Estratégia Recomendada:"); st.success(resultado_analise['estrategia'])
+st.subheader("Estratégia Recomendada:")
+st.success(resultado_analise['estrategia'])
 
 # --- ÁREA DE VISUALIZAÇÃO ---
 if resultado_analise['numeros_alvo']:
     st.subheader("Visualização dos Alvos")
     alvo_str = ", ".join(map(str, sorted(list(resultado_analise['numeros_alvo']))))
     st.write(f"**Total de {len(resultado_analise['numeros_alvo'])} números para cobrir:** {alvo_str}")
-
-    vis_col1, vis_col2 = st.columns([0.6, 0.4])
-    with vis_col1:
-        st.markdown("##### Destaques no Cilindro")
-        st.markdown(gerar_cilindro_visual(resultado_analise['numeros_alvo']), unsafe_allow_html=True)
-    with vis_col2:
-        st.markdown("##### Destaques na Tabela")
-        st.markdown(gerar_tabela_visual(resultado_analise['numeros_alvo']), unsafe_allow_html=True)
+    
+    st.markdown("##### Destaques no Cilindro")
+    st.markdown(gerar_cilindro_realista(resultado_analise['numeros_alvo']), unsafe_allow_html=True)
+    
+    st.markdown("##### Destaques na Tabela")
+    st.markdown(gerar_tabela_visual(resultado_analise['numeros_alvo']), unsafe_allow_html=True)
 
 # --- ÁREA DE ESTATÍSTICAS ---
 with st.expander("Ver Estatísticas do Histórico"):
@@ -276,6 +272,5 @@ with st.expander("Ver Estatísticas do Histórico"):
         st.metric("🔢 Par", stats['par']); st.metric("🕞 Ímpar", stats['impar'])
     with stat_col3:
         st.write("**Frequência dos Terminais:**")
-        # Prepara o DataFrame para o gráfico
         df_terminais = pd.DataFrame(list(stats['terminais'].items()), columns=['Terminal', 'Contagem']).set_index('Terminal')
         st.bar_chart(df_terminais)
