@@ -1,6 +1,7 @@
-# app_roleta_v7_corrigido.py
+# app_roleta_v8.py
 import streamlit as st
 import pandas as pd
+import math
 
 # --- APLICAÇÃO DE TEMA ESCURO EMBUTIDO ---
 def aplicar_tema_escuro():
@@ -26,10 +27,11 @@ aplicar_tema_escuro()
 CORES_NUMEROS = {'vermelho': {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}, 'preto': {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}, 'verde': {0}}
 LAYOUT_MESA = [[3,6,9,12,15,18,21,24,27,30,33,36],[2,5,8,11,14,17,20,23,26,29,32,35],[1,4,7,10,13,16,19,22,25,28,31,34]]
 CILINDRO_EUROPEU = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]
-LAYOUT_PISTA = {"curva_esquerda": [8,23,10,5], "reta_superior": [24,16,33,1,20,14,31,9,22,18,29,7,28,12,35], "reta_inferior": [30,11,36,13,27,6,34,17,25,2,21,4,19,15,32], "curva_direita": [3,26,0]}
+LAYOUT_PISTA = [24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5]
 
 # --- CLASSE DE ANÁLISE ---
 class AnalistaRoleta:
+    # (A classe AnalistaRoleta permanece a mesma das versões anteriores, sem alterações)
     def __init__(self):
         self.historico, self.rodada = [], 0
         self.VIZINHOS = self._calcular_vizinhos()
@@ -107,44 +109,70 @@ def check_password():
         else: st.error("Senha incorreta.")
     return False
 
-def get_style_caixa(num,numeros_a_destacar):
-    cor_fundo="#D22F27" if num in CORES_NUMEROS['vermelho'] else "#231F20" if num in CORES_NUMEROS['preto'] else "#006A4E"
-    borda="4px solid #FFD700" if num in numeros_a_destacar else f"2px solid #4A4A4A"
-    return f'background-color:{cor_fundo};color:white;border:{borda};'
+def get_cor_numero(num):
+    if num in CORES_NUMEROS['vermelho']: return "#D22F27"
+    if num in CORES_NUMEROS['preto']: return "#231F20"
+    return "#006A4E"
 
 def gerar_tabela_visual(numeros_a_destacar):
     style_base='width:60px;height:40px;text-align:center;font-weight:bold;font-size:16px;'
-    html="<div style='display:flex;align-items:flex-start;margin-top:20px;'>"
-    html+=f"<div><table style='border-collapse:collapse;'><tr><td style='{get_style_caixa(0,numeros_a_destacar)}{style_base} height:128px;'>0</td></tr></table></div>"
-    html+=f"<div><table style='border-collapse:collapse;'>{''.join(f'<tr>{"".join(f"<td style={get_style_caixa(num,numeros_a_destacar)}{style_base}>{num}</td>" for num in linha)}</tr>' for linha in LAYOUT_MESA)}</table></div></div>"
+    html = "<div style='display:flex;align-items:flex-start;margin-top:20px;'>"
+    html += f"<div><table style='border-collapse:collapse;'><tr><td style='background-color:{get_cor_numero(0)};color:white;border:{'4px solid #FFD700' if 0 in numeros_a_destacar else '2px solid #4A4A4A'};{style_base} height:128px;'>0</td></tr></table></div>"
+    html += "<div><table style='border-collapse:collapse;'>"
+    for linha in LAYOUT_MESA:
+        html += "<tr>"
+        for num in linha:
+            borda = '4px solid #FFD700' if num in numeros_a_destacar else '2px solid #4A4A4A'
+            html += f"<td style='background-color:{get_cor_numero(num)};color:white;border:{borda};{style_base}'>{num}</td>"
+        html += "</tr>"
+    html += "</table></div></div>"
     return html
 
-def gerar_pista_moderna(numeros_a_destacar):
-    caixa_style = "width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; margin:1px;"
-    html = f"""
-    <div style="width: 900px; height: 160px; background-color: #1E1E1E; border: 2px solid #4A4A4A; border-radius: 80px; margin: 30px auto; padding: 10px; display: flex; position: relative;">
-        <!-- Curva Esquerda -->
-        <div style="display: flex; flex-direction: column; justify-content: space-around;">
-            {''.join(f'<div style="{get_style_caixa(n, numeros_a_destacar)}{caixa_style} border-radius: 15px 0 0 15px;">{n}</div>' for n in LAYOUT_PISTA["curva_esquerda"][::-1])}
-        </div>
-        <!-- Centro (Retas) -->
-        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; margin: 0 5px;">
-            <div style="display: flex; justify-content: center;">{''.join(f'<div style="{get_style_caixa(n, numeros_a_destacar)}{caixa_style}">{n}</div>' for n in LAYOUT_PISTA["reta_superior"])}</div>
-            <div style="display: flex; justify-content: center;">{''.join(f'<div style="{get_style_caixa(n, numeros_a_destacar)}{caixa_style}">{n}</div>' for n in LAYOUT_PISTA["reta_inferior"])}</div>
-        </div>
-        <!-- Curva Direita -->
-        <div style="display: flex; flex-direction: column; justify-content: space-around;">
-             {''.join(f'<div style="{get_style_caixa(n, numeros_a_destacar)}{caixa_style} border-radius: 0 15px 15px 0;">{n}</div>' for n in LAYOUT_PISTA["curva_direita"])}
-        </div>
-        <!-- Labels Internos -->
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:92%; height:50px; border:1px solid #777; border-radius:40px; display:flex; align-items:center; color:#ccc; font-size:14px; font-weight:bold; background-color:rgba(30,30,30,0.8);">
-            <span style="flex:1.2;text-align:center;">TIER</span><span style="border-left:1px solid #777;height:100%;"></span>
-            <span style="flex:1;text-align:center;">ORPHELINS</span><span style="border-left:1px solid #777;height:100%;"></span>
-            <span style="flex:1;text-align:center;">VOISINS</span><span style="border-left:1px solid #777;height:100%;"></span>
-            <span style="flex:0.8;text-align:center;">ZERO</span>
-        </div>
-    </div>"""
-    return html
+def gerar_pista_svg(numeros_a_destacar):
+    # Parâmetros de Geometria
+    W, H = 900, 160  # Largura e altura total do SVG
+    R = H / 2 - 10   # Raio das curvas
+    L = W - 2 * R    # Comprimento da parte reta
+    N_RETA = 15      # Números na reta superior/inferior
+    N_CURVA = (len(LAYOUT_PISTA) - 2 * N_RETA) // 2
+
+    svg = f'<svg width="{W}" height="{H}" style="background-color: #1E1E1E; border-radius: 80px; border: 2px solid #4A4A4A; margin: 30px auto; display: block;">'
+    
+    # Desenha os números
+    for i, num in enumerate(LAYOUT_PISTA):
+        # Calcula a posição (cx, cy) de cada número
+        if i < N_RETA:  # Reta superior
+            cx = R + (L / (N_RETA -1 )) * i
+            cy = R / 2 + 5
+        elif i < N_RETA + N_CURVA: # Curva direita
+            angle = math.pi/2 - (math.pi / (N_CURVA -1)) * (i - N_RETA)
+            cx = R + L + R * math.cos(angle)
+            cy = R + 10 - R * math.sin(angle)
+        elif i < 2 * N_RETA + N_CURVA: # Reta inferior
+            cx = R + L - (L / (N_RETA - 1)) * (i - N_RETA - N_CURVA)
+            cy = H - (R / 2) - 5
+        else: # Curva esquerda
+            angle = -math.pi/2 - (math.pi / (N_CURVA -1)) * (i - 2 * N_RETA - N_CURVA)
+            cx = R + R * math.cos(angle)
+            cy = R + 10 - R * math.sin(angle)
+        
+        cor = get_cor_numero(num)
+        borda_cor = "#FFD700" if num in numeros_a_destacar else "#4A4A4A"
+        borda_largura = "3" if num in numeros_a_destacar else "1"
+
+        svg += f'<rect x="{cx-18}" y="{cy-18}" width="36" height="36" rx="5" fill="{cor}" stroke="{borda_cor}" stroke-width="{borda_largura}"/>'
+        svg += f'<text x="{cx}" y="{cy}" fill="white" font-size="16" font-weight="bold" text-anchor="middle" dominant-baseline="middle">{num}</text>'
+
+    # Adiciona labels internos
+    svg += f'<rect x="40" y="{H/2-25}" width="{W-80}" height="50" fill="rgba(30,30,30,0.8)" stroke="#777" rx="25"/>'
+    svg += f'<text x="190" y="{H/2+5}" fill="#ccc" font-size="14" font-weight="bold" text-anchor="middle">TIER</text>'
+    svg += f'<text x="360" y="{H/2+5}" fill="#ccc" font-size="14" font-weight="bold" text-anchor="middle">ORPHELINS</text>'
+    svg += f'<text x="540" y="{H/2+5}" fill="#ccc" font-size="14" font-weight="bold" text-anchor="middle">VOISINS</text>'
+    svg += f'<text x="730" y="{H/2+5}" fill="#ccc" font-size="14" font-weight="bold" text-anchor="middle">ZERO</text>'
+    svg += f'<line x1="280" y1="{H/2-25}" x2="280" y2="{H/2+25}" stroke="#777"/><line x1="450" y1="{H/2-25}" x2="450" y2="{H/2+25}" stroke="#777"/><line x1="650" y1="{H/2-25}" x2="650" y2="{H/2+25}" stroke="#777"/>'
+
+    svg += '</svg>'
+    return svg
 
 # --- INTERFACE PRINCIPAL ---
 if not check_password(): st.stop()
@@ -190,7 +218,7 @@ st.success(resultado['estrategia'])
 if resultado['numeros_alvo']:
     alvo_str=", ".join(map(str,sorted(list(resultado['numeros_alvo']))))
     st.write(f"**Total de {len(resultado['numeros_alvo'])} números para cobrir:** {alvo_str}")
-    st.markdown(gerar_pista_moderna(resultado['numeros_alvo']),unsafe_allow_html=True)
+    st.markdown(gerar_pista_svg(resultado['numeros_alvo']),unsafe_allow_html=True)
     st.markdown(gerar_tabela_visual(resultado['numeros_alvo']),unsafe_allow_html=True)
 
 with st.expander("Ver Estatísticas"):
