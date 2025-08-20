@@ -1,4 +1,4 @@
-# app_roleta_v7.py
+# app_roleta_v7_corrigido.py
 import streamlit as st
 import pandas as pd
 
@@ -108,7 +108,7 @@ def check_password():
     return False
 
 def get_style_caixa(num,numeros_a_destacar):
-    cor_fundo="#D22F27" if num in CORES_NUMEROS['vermelho'] else "#231F20" if num in CORES_NUMROS['preto'] else "#006A4E"
+    cor_fundo="#D22F27" if num in CORES_NUMEROS['vermelho'] else "#231F20" if num in CORES_NUMEROS['preto'] else "#006A4E"
     borda="4px solid #FFD700" if num in numeros_a_destacar else f"2px solid #4A4A4A"
     return f'background-color:{cor_fundo};color:white;border:{borda};'
 
