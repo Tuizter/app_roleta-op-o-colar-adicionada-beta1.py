@@ -142,6 +142,13 @@ with col_zero:
     if st.button("0", key="num_0", use_container_width=True):
         st.session_state.analista.adicionar_numero(0)
         st.rerun()
+        import pandas as pd
+
+if st.session_state.analista.historico:
+    freq = pd.Series(st.session_state.analista.historico).value_counts().sort_index()
+    st.subheader("📊 Frequência dos Últimos Números")
+    st.bar_chart(freq)
+
 st.subheader("Ou cole os últimos números:")
 
 entrada = st.text_input(
@@ -206,4 +213,5 @@ with col2:
 if st.button("Limpar Histórico"):
     st.session_state.analista.historico = []
     st.rerun()
+
 
