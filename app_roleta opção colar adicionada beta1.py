@@ -1,4 +1,4 @@
-# app_roleta.py
+# app_roleta_completa.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -10,7 +10,9 @@ st.set_page_config(layout="wide", page_title="Roleta Mestre")
 class AnalistaRoleta:
     def __init__(self):
         self.historico = []
-        self.CILINDRO_EUROPEU = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
+        self.CILINDRO_EUROPEU = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27,
+                                  13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1,
+                                  20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
         self.VIZINHOS = self._calcular_vizinhos()
         self.CAVALOS_TRIPLOS = {
             0: [3, 7], 1: [4, 8], 2: [5, 9], 3: [6, 0], 4: [7, 1],
@@ -43,6 +45,12 @@ class AnalistaRoleta:
             if len(self.historico) > 20:
                 self.historico.pop(0)
 
+    def adicionar_numeros_lista(self, lista_numeros):
+        # Substitui espaços por vírgula e adiciona apenas inteiros válidos
+        numeros = [int(n.strip()) for n in lista_numeros.replace(" ", ",").split(",") if n.strip().isdigit()]
+        for n in numeros:
+            self.adicionar_numero(n)
+
     def _get_terminais_recentes(self, quantidade):
         return [n % 10 for n in self.historico[-quantidade:]]
 
@@ -67,7 +75,7 @@ class AnalistaRoleta:
             if len(trindade.intersection(terminais_unicos)) == 2:
                 faltante = list(trindade - terminais_unicos)[0]
                 return {
-                    "analise": f"Gatilho 'Continuação de Cavalos' Ativado: Grupo {{{', '.join(map(str, sorted(list(trindade))))}}} está incompleto.",
+                    "analise": f"Gatilho 'Continuação de Cavalos' Ativado: Grupo {{{', '.join(map(str, sorted(list(trindade))))}}} incompleto.",
                     "estrategia": f"Focar a aposta na região do cavalo faltante: Terminal {faltante}."
                 }
         return None
@@ -131,6 +139,16 @@ st.title("Roleta Mestre - Agente Analista")
 if 'analista' not in st.session_state:
     st.session_state.analista = AnalistaRoleta()
 
+# --- Colar números ---
+st.header("Cole os últimos números (separados por vírgula ou espaço):")
+entrada = st.text_area("Ex: 12, 7, 25, 30")
+if st.button("Adicionar ao histórico"):
+    if entrada:
+        st.session_state.analista.adicionar_numeros_lista(entrada)
+        st.success("Números adicionados!")
+        st.experimental_rerun()
+
+# --- Botões de números ---
 st.header("Clique no número para adicionar ao histórico:")
 
 # Botão 0
@@ -144,7 +162,6 @@ with col_zero:
 numeros = [[3,6,9,12,15,18,21,24,27,30,33,36],
            [2,5,8,11,14,17,20,23,26,29,32,35],
            [1,4,7,10,13,16,19,22,25,28,31,34]]
-
 cols = st.columns(12)
 for i in range(12):
     for j in range(3):
@@ -152,19 +169,6 @@ for i in range(12):
         if cols[i].button(f"{num}", key=f"num_{num}", use_container_width=True):
             st.session_state.analista.adicionar_numero(num)
             st.rerun()
-
-# Entrada via colar lista
-st.divider()
-st.header("Ou cole os números separados por vírgula:")
-numeros_texto = st.text_area("Ex: 3,12,25,0,7")
-if st.button("Adicionar da lista"):
-    try:
-        lista = [int(n.strip()) for n in numeros_texto.split(",") if n.strip().isdigit()]
-        for n in lista:
-            st.session_state.analista.adicionar_numero(n)
-        st.rerun()
-    except Exception as e:
-        st.error(f"Erro ao adicionar números: {e}")
 
 st.divider()
 st.header("Análise em Tempo Real")
@@ -175,7 +179,6 @@ st.write(f"**Tempo de Tela:** {historico_str or 'Vazio'}")
 
 # Resultado da análise
 resultado_analise = st.session_state.analista.analisar()
-
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("Diagnóstico:")
